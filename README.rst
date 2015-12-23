@@ -8,7 +8,7 @@ Description
 
 This project is an asyncio_ clone for C.
 
-.. _ascyncio: https://docs.python.org/3/library/asyncio.html
+.. _asyncio: https://docs.python.org/3/library/asyncio.html
 
 License
 -------
