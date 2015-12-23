@@ -14,13 +14,33 @@ compiler:
   - clang
   - gcc
 
+# Container for C on linux does not include Python by default.
+addons:
+  apt:
+    packages:
+      - python2.7
+
 before_script:
   - mkdir build
   - cd build
+  # See the following for reference instructions on how to get virtualenv
+  # without installing anything (which we can't do because we've disabled
+  # sudo):
+  #   - http://stackoverflow.com/a/5177027
+  #   - http://virtualenv.readthedocs.org/en/latest/installation.html
+  - curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-13.1.2.tar.gz
+  - tar xvfz virtualenv-13.1.2.tar.gz
+  - python virtualenv-13.1.2/virtualenv.py env
+  - ./env/bin/pip install --upgrade pip
+  - ./env/bin/pip install -r ../doc_requirements.txt
 
 script:
+  # Build without tests.
   - cmake .. -DGREEN_TESTS=OFF
   - make
+  # Build tests and run them.
   - cmake .. -DGREEN_TESTS=ON
   - make
   - make test
+  # Build docs.
+  - ./env/bin/sphinx-build -b html ../docs/ docs/
