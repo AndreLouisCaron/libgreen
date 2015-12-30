@@ -33,4 +33,5 @@ int main()
     check_lt(GREEN_MAKE_VERSION(1, 1, 0),
              GREEN_MAKE_VERSION(2, 0, 0));
 
+    return EXIT_SUCCESS;
 }
