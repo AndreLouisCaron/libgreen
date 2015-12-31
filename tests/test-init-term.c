@@ -9,4 +9,6 @@ int main()
 {
     check_eq(0, green_init());
     check_eq(0, green_term());
+
+    return EXIT_SUCCESS;
 }

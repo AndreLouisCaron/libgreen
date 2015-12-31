@@ -33,4 +33,8 @@ int main()
     check_lt(GREEN_MAKE_VERSION(1, 1, 0),
              GREEN_MAKE_VERSION(2, 0, 0));
 
+    check_eq(_green_init(GREEN_MAJOR+1, GREEN_MINOR), 1);
+    check_eq(_green_init(GREEN_MAJOR, GREEN_MINOR+1), 1);
+
+    return EXIT_SUCCESS;
 }

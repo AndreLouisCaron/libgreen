@@ -21,26 +21,24 @@ addons:
       - python2.7
 
 before_script:
+  - pip install --user cpp-coveralls==0.3.10
+  - pip install --user Sphinx==1.3.3
+  # On OSX, user site directory is not on PATH.
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+      export PATH=$PATH:~/Library/Python/2.7/bin/;
+    fi
   - mkdir build
   - cd build
-  # See the following for reference instructions on how to get virtualenv
-  # without installing anything (which we can't do because we've disabled
-  # sudo):
-  #   - http://stackoverflow.com/a/5177027
-  #   - http://virtualenv.readthedocs.org/en/latest/installation.html
-  - curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-13.1.2.tar.gz
-  - tar xvfz virtualenv-13.1.2.tar.gz
-  - python virtualenv-13.1.2/virtualenv.py env
-  - ./env/bin/pip install --upgrade pip
-  - ./env/bin/pip install -r ../doc_requirements.txt
 
 script:
   # Build without tests.
   - cmake .. -DGREEN_TESTS=OFF
   - make
   # Build tests and run them.
-  - cmake .. -DGREEN_TESTS=ON
+  - cmake .. -DGREEN_TESTS=ON -DGREEN_GCOV=ON
   - make
-  - make test
+  - CTEST_OUTPUT_ON_FAILURE=TRUE make test
   # Build docs.
-  - ./env/bin/sphinx-build -b html ../docs/ docs/
+  - sphinx-build -b html ../docs/ docs/
+  # Send code coverage to coveralls.io.
+  - coveralls -r .. -b . -e build/env/ -E '.*CMakeCXXCompilerId\.cpp' -E '.*CMakeCCompilerId\.c' -E '.*feature_tests.c' -E '.*feature_tests.cxx'
