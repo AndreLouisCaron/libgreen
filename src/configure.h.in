@@ -1,0 +1,10 @@
+////////////////////////////////////////////////////////////////////////
+// Copyright(c) libgreen contributors.  See LICENSE file for details. //
+////////////////////////////////////////////////////////////////////////
+
+#ifndef _GREEN_CONFIGURE_H__
+#define _GREEN_CONFIGURE_H__
+
+#define GREEN_USE_UCONTEXT @GREEN_USE_UCONTEXT@
+
+#endif // _GREEN_CONFIGURE_H__
