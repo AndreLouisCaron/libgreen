@@ -8,6 +8,7 @@ project(green)
 
 option(GREEN_TESTS "Compile the test suite." ON)
 option(GREEN_GCOV "Compute code coverage." OFF)
+option(GREEN_VALGRIND "Run tests with memory leak checker." OFF)
 
 if (GREEN_GCOV)
   message(STATUS "Code coverage enabled.")
@@ -30,6 +31,15 @@ include_directories("${PROJECT_SOURCE_DIR}/include")
 add_library(green
   "src/green.c"
 )
+
+# This enables `ctest -T memcheck`.
+if (GREEN_VALGRIND)
+  find_program(MEMORYCHECK_COMMAND "valgrind")
+  set(MEMORYCHECK_COMMAND_OPTIONS
+    "--leak-check=yes --error-exitcode=666"
+  )
+  include(Dart)
+endif()
 
 macro(green_add_test test-name source-file)
   add_executable(${test-name} ${source-file})
