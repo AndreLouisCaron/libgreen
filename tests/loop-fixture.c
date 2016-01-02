@@ -10,30 +10,12 @@ int main(int argc, char ** argv)
     fprintf(stderr,
             "green library version: \"%s\".\n", green_version_string());
 
-    if (green_init()) {
-        fprintf(stderr, "green_init()\n");
-        return EXIT_FAILURE;
-    }
+    check_eq(green_init(), 0);
     green_loop_t loop = green_loop_init();
-    if (loop == NULL) {
-        fprintf(stderr, "green_loop_init()\n");
-        return EXIT_FAILURE;
-    }
-
-    if (test(loop) != 0) {
-        fprintf(stderr, "green_test()\n");
-        return EXIT_FAILURE;
-    }
-
-    if (green_loop_release(loop)) {
-        fprintf(stderr, "green_loop_release()\n");
-        return EXIT_FAILURE;
-    }
-    loop = NULL;
-    if (green_term()) {
-        fprintf(stderr, "green_term()\n");
-        return EXIT_FAILURE;
-    }
+    check_ne(loop, NULL);
+    check_eq(test(loop), 0);
+    check_eq(green_loop_release(loop), 0); loop = NULL;
+    check_eq(green_term(), 0);
 
     return EXIT_SUCCESS;
 }

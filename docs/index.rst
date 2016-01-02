@@ -198,13 +198,6 @@ Coroutine
 
    .. note:: This function is implemented as a macro.
 
-.. c:function:: green_future_t green_coroutine_join(green_coroutine_t coro)
-
-   :arg coro: Coroutine whose completion you are interested in.
-   :return: A future that will be completed when ``coro`` returns.
-
-   .. note:: Cancelling this future does **not** cancel the coroutine.
-
 .. c:function:: int green_coroutine_acquire(green_coroutine_t coro)
 
    Increase the reference count.
@@ -217,6 +210,256 @@ Coroutine
 
    :return: Zero if the function succeeds.
 
+
+.. _future:
+
+Future
+~~~~~~
+
+The future is the foundation of ``libgreen``.  It represents the promise of
+completion of an asynchronous operation.  Combined with the poller_ and
+:c:func:`green_select`, it can be used to multiplex multiple asynchronous
+operations in the same coroutine_.
+
+.. c:type:: green_future_t
+
+   This is an opaque pointer type to a reference-counted object.
+
+.. c:function:: green_future_t green_future_init(green_hub_t hub)
+
+   Create a custom future.  When your asynchronous operation completes, call
+   :c:func:`green_future_set_result` to mark it as complete and unblock a
+   coroutine if one is waiting on this future.
+
+   :arg hub: Hub to which the future will be attached.  The coroutine that
+      completes this future **MUST** be running from this hub.
+   :return: A future that you can complete whenever you wish.
+
+.. c:function:: int green_future_set_result(green_future_t future, void * p, int i)
+
+   Mark the future as completed.  If any coroutine is currently blocking on
+   :c:func:`green_select` with a poller in which this future is registered,
+   then that coroutine will be unblocked and resumed soon.
+
+   :arg future: Future to complete.
+   :arg p: Pointer result.  Will be returned by :c:func:`green_future_result`.
+   :arg i: Integer result.  Will be returned by :c:func:`green_future_result`.
+   :return: Zero if the function succeeds.
+
+.. c:function:: int green_future_done(green_future_t future)
+
+   Check if the future is completd or canceled.
+
+   :arg future: Future to check for completion.
+   :return: Non-zero if the future is completed or cancelled.  Zero if the
+      future is still pending.
+
+.. c:function:: int green_future_canceled(green_future_t future)
+
+   Check if the future is canceled.
+
+   :arg future: Future to check for cancellation.
+   :return: Non-zero if the future is cancelled.  Zero if the future is still
+      pending or completed.
+
+.. c:function:: int green_future_result(green_future_t future, void ** p, int * i)
+
+   Return the result that was stored when the future was completed.
+
+   :arg future: Future to check for result after completion.
+   :arg p: Pointer into which the value passed to
+      :c:func:`green_future_set_result` will be stored.
+   :arg p: Integer into which the value passed to
+      :c:func:`green_future_set_result` will be stored.
+   :return: Zero if the function succeeds, :c:macro:`GREEN_EBUSY` if the future
+      is pending, :c:macro:`GREEN_EBADFD` if the future is canceled.
+
+.. c:function:: int green_future_cancel(green_future_t future)
+
+   Since there is no reason to keep around a cancelled future, canceling a
+   future automatically decrements the reference count and there is no need to
+   call :c:func:`green_future_release` after canceling the future.
+
+   .. attention:: Cancellation is usually asynchronous and may not be natively
+      supported by all asynchronous operations or by all platforms for a given
+      asynchronous operation.  The basic cancellation guarantee is that the
+      future will never be returned by :c:func:`green_select`, but the future
+      may not be deleted until it is actually completed.
+
+   :arg future: The future to cancel.
+   :return: Zero on success.
+
+.. c:function:: int green_future_acquire(green_future_t future)
+
+   Increase the reference count.
+
+   :return: Zero if the function succeeds.
+
+.. c:function:: int green_future_release(green_future_t future)
+
+   Decrease the reference count and destroy the object if necessary.
+
+   :return: Zero if the function succeeds.
+
+
+.. _poller:
+
+Poller
+~~~~~~
+
+The poller is a specialized container that stores a set of future_ refrences in
+way that allows very efficient dispatch of future completion and implicit
+unblocking of a coroutine_ currently waiting on a completed future.
+
+When you initiate a new asynchronous operation, call :c:func:`green_poller_add`
+to add the future_ to the poller.  When your coroutine is ready, call
+:c:func:`green_select` to block until one or more such futures complete.
+
+The poller is similar to the ``fd_set`` that is used with ``select()``, but
+implemented in a way that allows ``O(1)`` dispatch.
+
+.. attention:: Pollers **MUST NOT** be shared between coroutines.  Any
+   modification of a poller on which another coroutine is blocking via
+   :c:func:`green_select` may result in undefined behavior.
+
+.. c:type:: green_poller_t
+
+   This is an opaque pointer type to a reference-counted object.
+
+   Use :c:func:`green_poller_release` when you are done with such a pointer.
+   If you need to grab extra references, call :c:func:`green_poller_acquire`.
+   Make sure you call :c:func:`green_poller_release` once for each call to
+   :c:func:`green_poller_acquire`.
+
+.. c:function:: green_poller_t green_poller_init(green_hub_t hub, size_t size)
+
+   Create a new poller for use with :c:func:`green_select`.
+
+   :arg hub: Hub to which the current coroutine is attached.
+   :arg size: Maximum number of futures you intend on adding to this poller.
+   :return: A new poller that can be passed to :c:func:`green_select`.  Call
+      :c:func:`green_poller_release` when you are done with this poller.
+
+.. c:function:: size_t green_poller_size(green_poller_t poller)
+
+   Get the total number of slots in the future.
+
+   :arg poller: Poller to check for maximum size.
+   :return: The maximum number of futures that can be stored in the poller.
+
+.. c:function:: size_t green_poller_used(green_poller_t poller)
+
+   Get the number of slots currently used by futures (pending and completed).
+
+   :arg poller: Poller to check for current size.
+   :return: The current number of futures stored in the poller.
+
+.. c:function:: size_t green_poller_done(green_poller_t poller)
+
+   Get the number of slots currently used by completed futures.  This number
+   indicates the number of times you can call :c:func:`green_poller_pop` before
+   it returns ``NULL``.
+
+   :arg poller: Poller to check for completed futures.
+   :return: The number of completed futures currently stored in the poller.
+
+.. c:function:: int green_poller_add(green_poller_t poller, green_future_t future)
+
+   Add a future to the set.
+
+   It is legal to add a completed future to a poller.  In that case, the next
+   call to :c:func:`green_select` with that poller will not block.  This is
+   especially convenient to handle synchronous completion of some asynchronous
+   operations as it removes the need for an alternate code path to handle
+   synchronous completion -- especially for operations that may be synchronous
+   only on some platforms.
+
+   :arg poller: Poller to which the future should be added.
+   :arg future: Future that should be added to the poller.
+   :return: Zero if the function succeeds.
+
+.. c:function:: int green_poller_rem(green_poller_t poller, green_future_t future)
+
+   Remove a future from the poller without fulfilling or cancelling it.
+
+   Futures are automatically removed from the poller when fulfilled or
+   cancelled.  However, the implicit removal of a cancelled future may be
+   asynchronous.  If you cancel a future and then need the slot immediately to
+   add a new future, you can call this to free the slot immediately.
+
+   :arg poller: Poller from which the future should be removed.
+   :arg future: Future that should be removed from the poller.
+   :return: Zero if the function succeeds.
+
+.. c:function:: green_future_t green_poller_pop(green_poller_t poller)
+
+   Grab the next completed future from the poller.  You can call
+   :c:func:`green_poller_done` to determine how many times you can call this
+   function before it returns ``NULL``.
+
+   :arg poller: Poller from which a completed future should be removed.
+   :return: A completed future.  If ``poller`` contains no completed futures,
+      ``NULL`` is returned.
+
+.. c:function:: int green_poller_acquire(green_poller_t poller)
+
+   Increase the reference count.
+
+   :return: Zero if the function succeeds.
+
+.. c:function:: int green_poller_release(green_poller_t poller)
+
+   Decrease the reference count and destroy the object if necessary.
+
+   :return: Zero if the function succeeds.
+
+.. c:function:: green_future_t green_select(green_poller_t poller)
+
+   Block until any of the futures registered in ``poller`` are completed.  If
+   the poller contains any completed futures, the function returns immediately.
+
+   :arg poller: The poller in which all futures that can unblock the current
+      coroutine are registered.
+   :return: A completed future if the function succeeds, else ``NULL``.
+
+   .. note:: This function is implemented as a macro.
+
+Error codes
+~~~~~~~~~~~
+
+.. c:macro:: GREEN_SUCCESS
+
+   The call completed successfully.  This value is guaranteed to be zero.
+
+.. c:macro:: GREEN_EBUSY
+
+   The future is still pending.
+
+.. c:macro:: GREEN_ENOMEM
+
+   Could not allocate enough memory.
+
+.. c:macro:: GREEN_EBADFD
+
+   The future is in an invalid state.
+
+.. c:macro:: GREEN_ECANCELED
+
+   Cannot complete the future because it is already canceled.
+
+.. c:macro:: GREEN_EALREADY
+
+   Cannot add the future to the poller because the future is alredy in a
+   poller.
+
+.. c:macro:: GREEN_ENOENT
+
+   Cannot remove the future from the poller because it was not found inside the
+   poller.
+
+.. c:macro:: GREEN_ENFILE
+
+   Cannot add the future to the poller because the poller is already full.
 
 Indices and tables
 ==================

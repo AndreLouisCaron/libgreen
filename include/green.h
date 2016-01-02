@@ -28,6 +28,17 @@
     GREEN_STRING(GREEN_MINOR) "." \
     GREEN_STRING(GREEN_PATCH)
 
+// Error codes.
+#define GREEN_SUCCESS 0
+#define GREEN_EINVAL 1
+#define GREEN_ENOMEM 2
+#define GREEN_EBUSY 3
+#define GREEN_ECANCELED 4
+#define GREEN_EALREADY 5
+#define GREEN_ENOENT 6
+#define GREEN_ENFILE 7
+#define GREEN_EBADFD 8
+
 // Lib version.
 int green_version();
 const char * green_version_string();
@@ -63,5 +74,34 @@ int green_coroutine_result(green_coroutine_t coro);
 
 int green_coroutine_acquire(green_coroutine_t coro);
 int green_coroutine_release(green_coroutine_t coro);
+
+// Future.
+typedef struct green_future * green_future_t;
+green_future_t green_future_init(green_loop_t loop);
+int green_future_done(green_future_t future);
+int green_future_canceled(green_future_t future);
+int green_future_set_result(green_future_t future, void * p, int i);
+int green_future_result(green_future_t future, void ** p, int * i);
+int green_future_cancel(green_future_t future);
+
+int green_future_acquire(green_future_t future);
+int green_future_release(green_future_t future);
+
+// Poller.
+typedef struct green_poller * green_poller_t;
+green_poller_t green_poller_init(green_loop_t loop, size_t size);
+size_t green_poller_size(green_poller_t poller);
+size_t green_poller_used(green_poller_t poller);
+size_t green_poller_done(green_poller_t poller);
+int green_poller_add(green_poller_t poller, green_future_t future);
+int green_poller_rem(green_poller_t poller, green_future_t future);
+green_future_t green_poller_pop(green_poller_t poller);
+
+int green_poller_acquire(green_poller_t poller);
+int green_poller_release(green_poller_t poller);
+
+green_future_t _green_select(green_poller_t poller, const char * source);
+#define green_select(poller) \
+    green_select_ex(poller, timeout, __FILE__ ":" GREEN_STRING(__LINE__))
 
 #endif // _GREEN_H__
