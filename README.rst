@@ -40,7 +40,7 @@ discuss, fork the project and then send in a pull request :-)
 Feel free to add yourself to the ``CONTRIBUTORS`` file on your first pull
 request!
 
-.. `issue tracker`: https://github.com/AndreLouisCaron/libgreen/issues
+.. _`issue tracker`: https://github.com/AndreLouisCaron/libgreen/issues
 
 License
 -------
