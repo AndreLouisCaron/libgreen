@@ -13,11 +13,12 @@ option(GREEN_VALGRIND "Run tests with memory leak checker." OFF)
 if (GREEN_GCOV)
   message(STATUS "Code coverage enabled.")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 --coverage")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 --coverage")
   set(CMAKE_STATIC_LINKER_FLAGS="--coverage")
   set(CMAKE_MODULE_LINKER_FLAGS="--coverage")
   set(CMAKE_EXE_LINKER_FLAGS="--coverage")
 endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 # Configure stuff.
 try_run(HAVE_UCONTEXT_RESULT HAVE_UCONTEXT
@@ -59,6 +60,9 @@ add_library(green
   "src/green.c"
 )
 
+# libm is required for functions from <math.h>.
+target_link_libraries(green m)
+
 # This enables `ctest -T memcheck`.
 if (GREEN_VALGRIND)
   find_program(MEMORYCHECK_COMMAND "valgrind")
@@ -80,4 +84,6 @@ if(GREEN_TESTS)
   green_add_test(test-init-term "tests/test-init-term.c")
   green_add_test(test-loop "tests/test-loop.c")
   green_add_test(test-coroutine "tests/test-coroutine.c")
+  green_add_test(test-poller "tests/test-poller.c")
+  green_add_test(test-future "tests/test-future.c")
 endif()

@@ -7,16 +7,9 @@
 int mycoroutine(green_loop_t loop, void * object)
 {
     fprintf(stderr, "in coroutine (%d).\n", __COUNTER__);
-    if (loop == NULL) {
-        return 1;
-    }
-    if (object != NULL) {
-        return 1;
-    }
-
-    if (green_yield(loop, NULL)) {
-        return 2;
-    }
+    check_ne(loop, NULL);
+    check_eq(object, NULL);
+    check_eq(green_yield(loop, NULL), 0);
     fprintf(stderr, "in coroutine (%d).\n", __COUNTER__);
 
     return 777;
