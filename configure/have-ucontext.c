@@ -2,18 +2,22 @@
 // Copyright(c) libgreen contributors.  See LICENSE file for details. //
 ////////////////////////////////////////////////////////////////////////
 
+
 // Required for using ucontext.
 #define _XOPEN_SOURCE 500
+
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h>
+
 
 ucontext_t hub;
 ucontext_t coro;
 int coro_status = 0;
 void * P = NULL;
 int stack_size = 64 * 1024;  // SIGSTKSZ is too small on linux.
+
 
 // NOTE: according to the ucontext specification, we can only pass int
 //       arguments to the coroutine.  Use a pair of ints in case `sizeof(void*)
@@ -22,6 +26,7 @@ typedef union {
     int i[2];
     void * p;
 } coroutine_args;
+
 
 void coroutine(int i0, int i1)
 {
@@ -57,6 +62,7 @@ void coroutine(int i0, int i1)
 
     fprintf(stderr, "coro: leave.\n");
 }
+
 
 int main()
 {
@@ -94,7 +100,7 @@ int main()
     i++;
     fprintf(stderr, "main: yield (1).\n");
     if (swapcontext(&hub, &coro) < 0) {
-        fprintf(stderr, "main: getcontext()\n");
+        fprintf(stderr, "main: swapcontext()\n");
         return EXIT_FAILURE;
     }
     if (coro_status != 0) {
@@ -113,7 +119,7 @@ int main()
     i++;
     fprintf(stderr, "main: yield (2).\n");
     if (swapcontext(&hub, &coro) < 0) {
-        fprintf(stderr, "main: getcontext()\n");
+        fprintf(stderr, "main: swapcontext()\n");
         return EXIT_FAILURE;
     }
     if (coro_status != 0) {
